@@ -172,7 +172,7 @@ class PingPongScoreboard:
                 else:
                     # Button is being held, check how long it's been held
                     press_duration = current_time - self.button_pressed_time[player]
-                    if press_duration > 5:
+                    if press_duration > 3:
                         # Button has been held for more than 5 seconds, reset scores
                         print(f"Player {player} button held for {press_duration:.2f} seconds - resetting scores.")
                         self.reset_scores()
@@ -183,7 +183,7 @@ class PingPongScoreboard:
                     press_duration = current_time - self.button_pressed_time[player]
                     self.button_pressed[player] = False
 
-                    if press_duration <= 5 and press_duration > 0.2:
+                    if press_duration <= 3 and press_duration > 0.01:
                         # If button press was not long enough for reset but valid for a point
                         print(f"Player {player} button pressed for {press_duration:.2f} seconds - adding point.")
                         self.add_point(player)
