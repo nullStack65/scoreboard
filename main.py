@@ -14,14 +14,25 @@ class PingPongScoreboard:
     def __init__(self, master):
         self.master = master
         master.title("Ping Pong Scoreboard")
-        
-        # Set window size manually to 1024x600 in landscape mode
-        master.geometry("1024x600")
-        
-        # Optional: Remove window borders and make it fullscreen-like
-        # master.overrideredirect(True)
-        
-        # Make sure the window is on top
+
+        # Remove window decorations (borders, title bar)
+        master.overrideredirect(True)
+
+        # Get screen dimensions
+        master.update_idletasks()  # Ensure screen size is updated
+        screen_width = master.winfo_screenwidth()
+        screen_height = master.winfo_screenheight()
+
+        # For debugging: Print screen size
+        print(f"Screen width: {screen_width}, Screen height: {screen_height}")
+
+        # Set window size to match screen resolution and position it at (0,0)
+        master.geometry(f"{screen_width}x{screen_height}+0+0")
+
+        # Prevent window from being resized
+        master.resizable(False, False)
+
+        # Keep the window on top
         master.attributes('-topmost', True)
 
         self.player1_score = 0
@@ -126,7 +137,7 @@ class PingPongScoreboard:
         self.master.after(3000, self.reset_scores)
 
     def clear_widgets(self):
-        # Clear only the main_frame to prevent unintended widget duplication
+        # Clear all widgets except the main_frame
         for widget in self.master.winfo_children():
             if widget != self.main_frame:
                 widget.destroy()
