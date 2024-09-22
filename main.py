@@ -2,7 +2,7 @@ import RPi.GPIO as GPIO
 from tkinter import *
 from tkinter import ttk
 import time
-import sys
+import threading
 
 # GPIO Setup
 GPIO.setmode(GPIO.BCM)
@@ -31,6 +31,10 @@ class PingPongScoreboard:
         self.serving = 1  # Player 1 starts serving
         self.last_press_time = {1: 0, 2: 0}
         
+        # Queue for button presses
+        self.button_queue = []
+        self.queue_lock = threading.Lock()
+        
         # Create main frame
         self.main_frame = ttk.Frame(self.master, padding=20)
         self.main_frame.pack(expand=True, fill=BOTH)
@@ -53,6 +57,9 @@ class PingPongScoreboard:
         
         # Setup GPIO event detection
         self.setup_gpio_events()
+        
+        # Start processing the button queue
+        self.process_button_queue()
     
     def create_player_frames(self):
         # Player 1 Frame
@@ -85,11 +92,11 @@ class PingPongScoreboard:
     
     def create_winner_overlay(self):
         # Create a frame that overlays the main frame
-        self.winner_frame = ttk.Frame(self.master, padding=50, style='Winner.TFrame')
+        self.winner_frame = Frame(self.master, bg='white')
         self.winner_frame.place(relx=0.5, rely=0.5, anchor=CENTER)
         self.winner_frame.lower()  # Hide it initially
         
-        self.winner_label = ttk.Label(self.winner_frame, text="", font=("Arial", 72), foreground="green")
+        self.winner_label = Label(self.winner_frame, text="", font=("Arial", 72), fg="green", bg='white')
         self.winner_label.pack()
     
     def update_display(self):
@@ -160,10 +167,21 @@ class PingPongScoreboard:
         GPIO.add_event_detect(PLAYER2_BUTTON, GPIO.FALLING, callback=self.player2_button_pressed, bouncetime=300)
     
     def player1_button_pressed(self, channel):
-        self.handle_button_press(1)
+        self.queue_button_press(1)
     
     def player2_button_pressed(self, channel):
-        self.handle_button_press(2)
+        self.queue_button_press(2)
+    
+    def queue_button_press(self, player):
+        with self.queue_lock:
+            self.button_queue.append(player)
+    
+    def process_button_queue(self):
+        with self.queue_lock:
+            while self.button_queue:
+                player = self.button_queue.pop(0)
+                self.handle_button_press(player)
+        self.master.after(100, self.process_button_queue)  # Check the queue every 100ms
     
     def handle_button_press(self, player):
         current_time = time.time()
@@ -190,10 +208,10 @@ class PingPongScoreboard:
 if __name__ == "__main__":
     root = Tk()
     
-    # Optional: Apply styles for better appearance
-    style = ttk.Style()
-    style.configure('Winner.TFrame', background='white')
-    style.configure('Winner.TLabel', foreground='green', background='white')
+    # Removed ttk.Style configurations to prevent potential issues
+    # style = ttk.Style()
+    # style.configure('Winner.TFrame', background='white')
+    # style.configure('Winner.TLabel', foreground='green', background='white')
     
     app = PingPongScoreboard(root)
     app.run()
