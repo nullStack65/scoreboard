@@ -2,11 +2,10 @@ import RPi.GPIO as GPIO
 from tkinter import *
 from tkinter import ttk
 import time
-import threading
 
 # GPIO Setup
 GPIO.setmode(GPIO.BCM)
-PLAYER1_BUTTON = 26  # Ensure this is correct
+PLAYER1_BUTTON = 26
 PLAYER2_BUTTON = 18
 GPIO.setup(PLAYER1_BUTTON, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 GPIO.setup(PLAYER2_BUTTON, GPIO.IN, pull_up_down=GPIO.PUD_UP)
@@ -21,49 +20,32 @@ class PingPongScoreboard:
         
         # Make sure the window is on top
         master.attributes('-topmost', True)
-        
-        # Bind the Escape key to exit the application
-        master.bind("<Escape>", lambda e: self.exit_application())
-        
-        # Initialize scores and serving player
+
         self.player1_score = 0
         self.player2_score = 0
         self.serving = 1  # Player 1 starts serving
         self.last_press_time = {1: 0, 2: 0}
-        
-        # Queue for button presses
-        self.button_queue = []
-        self.queue_lock = threading.Lock()
-        
-        # Create main frame
-        self.main_frame = ttk.Frame(self.master, padding=20)
-        self.main_frame.pack(expand=True, fill=BOTH)
-        
-        # Configure grid layout
-        self.main_frame.columnconfigure(0, weight=1)
-        self.main_frame.columnconfigure(1, weight=1)
-        self.main_frame.rowconfigure(0, weight=1)
-        self.main_frame.rowconfigure(1, weight=3)
-        self.main_frame.rowconfigure(2, weight=1)
-        
-        # Create player frames
-        self.create_player_frames()
-        
-        # Create winner overlay (hidden by default)
-        self.create_winner_overlay()
-        
-        # Update the display initially
+
+        self.create_widgets()
         self.update_display()
-        
-        # Setup GPIO event detection
-        self.setup_gpio_events()
-        
-        # Start processing the button queue
-        self.process_button_queue()
-    
-    def create_player_frames(self):
+
+        # Start checking GPIO inputs
+        self.check_buttons()
+
+    def create_widgets(self):
+        # Use a main frame to hold all widgets with padding
+        main_frame = ttk.Frame(self.master, padding=20)
+        main_frame.pack(expand=True, fill=BOTH)
+
+        # Configure grid layout
+        main_frame.columnconfigure(0, weight=1)
+        main_frame.columnconfigure(1, weight=1)
+        main_frame.rowconfigure(0, weight=1)
+        main_frame.rowconfigure(1, weight=3)
+        main_frame.rowconfigure(2, weight=1)
+
         # Player 1 Frame
-        self.player1_frame = ttk.Frame(self.main_frame, padding=10)
+        self.player1_frame = ttk.Frame(main_frame, padding=10)
         self.player1_frame.grid(row=1, column=0, sticky="nsew")
         self.player1_frame.columnconfigure(0, weight=1)
         
@@ -75,9 +57,9 @@ class PingPongScoreboard:
         
         self.player1_serving_label = ttk.Label(self.player1_frame, text="", font=("Arial", 24))
         self.player1_serving_label.pack(pady=(10, 0))
-        
+
         # Player 2 Frame
-        self.player2_frame = ttk.Frame(self.main_frame, padding=10)
+        self.player2_frame = ttk.Frame(main_frame, padding=10)
         self.player2_frame.grid(row=1, column=1, sticky="nsew")
         self.player2_frame.columnconfigure(0, weight=1)
         
@@ -89,27 +71,18 @@ class PingPongScoreboard:
         
         self.player2_serving_label = ttk.Label(self.player2_frame, text="", font=("Arial", 24))
         self.player2_serving_label.pack(pady=(10, 0))
-    
-    def create_winner_overlay(self):
-        # Create a frame that overlays the main frame
-        self.winner_frame = Frame(self.master, bg='white')
-        self.winner_frame.place(relx=0.5, rely=0.5, anchor=CENTER)
-        self.winner_frame.lower()  # Hide it initially
-        
-        self.winner_label = Label(self.winner_frame, text="", font=("Arial", 72), fg="green", bg='white')
-        self.winner_label.pack()
-    
+
     def update_display(self):
         # Update scores
         self.player1_score_label.config(text=str(self.player1_score))
         self.player2_score_label.config(text=str(self.player2_score))
-        
-        # Reset colors and serving labels
+
+        # Reset colors
         self.player1_score_label.config(foreground="black")
         self.player2_score_label.config(foreground="black")
         self.player1_serving_label.config(text="")
         self.player2_serving_label.config(text="")
-        
+
         # Highlight serving player
         if self.serving == 1:
             self.player1_score_label.config(foreground="red")
@@ -117,104 +90,73 @@ class PingPongScoreboard:
         else:
             self.player2_score_label.config(foreground="red")
             self.player2_serving_label.config(text="Serving")
-    
+
     def add_point(self, player):
         if player == 1:
             self.player1_score += 1
         else:
             self.player2_score += 1
-        
+
         self.check_match_point()
         self.update_display()
-    
+
     def check_match_point(self):
         total_points = self.player1_score + self.player2_score
-        
+
         if self.player1_score >= 10 or self.player2_score >= 10:
             self.serving = 2 if self.player1_score > self.player2_score else 1
         else:
-            if total_points % 5 == 0 and total_points != 0:
+            if total_points % 5 == 0:
                 self.serving = 2 if self.serving == 1 else 1
-        
+
         if self.player1_score >= 11 and self.player1_score >= self.player2_score + 2:
             self.end_game(1)
         elif self.player2_score >= 11 and self.player2_score >= self.player1_score + 2:
             self.end_game(2)
-    
+
     def end_game(self, winner):
-        # Display winner message
-        self.winner_label.config(text=f"Player {winner} Wins!")
-        self.winner_frame.lift()  # Bring to front
-        
-        # Schedule to reset scores after 3 seconds
+        # Display winner message across the screen
+        winner_message = f"Player {winner} Wins!"
+        self.clear_widgets()
+        winner_label = ttk.Label(self.master, text=winner_message, font=("Arial", 72), foreground="green")
+        winner_label.place(relx=0.5, rely=0.5, anchor=CENTER)
         self.master.after(3000, self.reset_scores)
-    
+
+    def clear_widgets(self):
+        for widget in self.master.winfo_children():
+            widget.destroy()
+
     def reset_scores(self):
-        # Hide winner message
-        self.winner_frame.lower()
-        
-        # Reset scores and serving player
+        # Recreate widgets after clearing
         self.player1_score = 0
         self.player2_score = 0
         self.serving = 1
+        self.create_widgets()
         self.update_display()
-    
-    def setup_gpio_events(self):
-        # Setup event detection for Player 1 Button
-        GPIO.add_event_detect(PLAYER1_BUTTON, GPIO.FALLING, callback=self.player1_button_pressed, bouncetime=300)
-        
-        # Setup event detection for Player 2 Button
-        GPIO.add_event_detect(PLAYER2_BUTTON, GPIO.FALLING, callback=self.player2_button_pressed, bouncetime=300)
-    
-    def player1_button_pressed(self, channel):
-        self.queue_button_press(1)
-    
-    def player2_button_pressed(self, channel):
-        self.queue_button_press(2)
-    
-    def queue_button_press(self, player):
-        with self.queue_lock:
-            self.button_queue.append(player)
-    
-    def process_button_queue(self):
-        with self.queue_lock:
-            while self.button_queue:
-                player = self.button_queue.pop(0)
-                self.handle_button_press(player)
-        self.master.after(100, self.process_button_queue)  # Check the queue every 100ms
-    
-    def handle_button_press(self, player):
-        current_time = time.time()
-        time_since_last = current_time - self.last_press_time[player]
-        
-        if time_since_last > 5:
-            print(f"Player {player} button held for reset")
-            self.reset_scores()
-        elif time_since_last > 0.5:  # Debounce
-            print(f"Player {player} button pressed for point")
-            self.add_point(player)
-        
-        self.last_press_time[player] = current_time
-    
-    def exit_application(self):
-        self.master.destroy()
-    
-    def run(self):
-        try:
-            self.master.mainloop()
-        except KeyboardInterrupt:
-            self.exit_application()
+
+    def check_buttons(self):
+        for player, pin in [(1, PLAYER1_BUTTON), (2, PLAYER2_BUTTON)]:
+            if GPIO.input(pin) == GPIO.LOW:
+                current_time = time.time()
+                time_since_last = current_time - self.last_press_time[player]
+                
+                if time_since_last > 5:
+                    print(f"Player {player} button held for reset")
+                    self.reset_scores()
+                elif time_since_last > 0.5:  # Debounce
+                    print(f"Player {player} button pressed for point")
+                    self.add_point(player)
+                self.last_press_time[player] = current_time
+            else:
+                print(f"Player {player} button not pressed")
+
+        self.master.after(100, self.check_buttons)  # Check every 100ms
 
 if __name__ == "__main__":
     root = Tk()
-    
-    # Removed ttk.Style configurations to prevent potential issues
-    # style = ttk.Style()
-    # style.configure('Winner.TFrame', background='white')
-    # style.configure('Winner.TLabel', foreground='green', background='white')
-    
     app = PingPongScoreboard(root)
-    app.run()
-    
-    # Cleanup GPIO on exit
-    GPIO.cleanup()
+    try:
+        root.mainloop()
+    finally:
+        # Cleanup GPIO on exit
+        GPIO.cleanup()
