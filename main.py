@@ -40,9 +40,9 @@ class PingPongScoreboard:
         self.player2_score = 0
         self.serving = 1  # Player 1 starts serving
 
-        # Initialize last_press_time to current time to prevent immediate resets
-        current_time = time.time()
-        self.last_press_time = {1: current_time, 2: current_time}
+        # Initialize button states and press times
+        self.button_pressed = {1: False, 2: False}
+        self.button_pressed_time = {1: 0, 2: 0}
 
         self.create_widgets()
         self.update_display()
@@ -161,20 +161,28 @@ class PingPongScoreboard:
                 widget.destroy()
 
     def check_buttons(self):
+        current_time = time.time()
         for player, pin in [(1, PLAYER1_BUTTON), (2, PLAYER2_BUTTON)]:
             if GPIO.input(pin) == GPIO.LOW:
-                current_time = time.time()
-                time_since_last = current_time - self.last_press_time[player]
-                
-                if time_since_last > 5:
-                    print(f"Player {player} button held for reset")
-                    self.reset_scores()
-                elif time_since_last > 0.2:  # Reduced Debounce from 0.5 to 0.2 seconds
-                    print(f"Player {player} button pressed for point")
-                    self.add_point(player)
-                self.last_press_time[player] = current_time
+                if not self.button_pressed[player]:
+                    # Button was just pressed
+                    self.button_pressed[player] = True
+                    self.button_pressed_time[player] = current_time
+                    print(f"Player {player} button pressed.")
             else:
-                print(f"Player {player} button not pressed")
+                if self.button_pressed[player]:
+                    # Button was just released
+                    press_duration = current_time - self.button_pressed_time[player]
+                    self.button_pressed[player] = False
+
+                    if press_duration > 5:
+                        print(f"Player {player} button held for {press_duration:.2f} seconds - resetting scores.")
+                        self.reset_scores()
+                    elif press_duration > 0.2:
+                        print(f"Player {player} button pressed for {press_duration:.2f} seconds - adding point.")
+                        self.add_point(player)
+                    else:
+                        print(f"Player {player} button pressed for {press_duration:.2f} seconds - ignored (too short).")
 
         self.master.after(100, self.check_buttons)  # Check every 100ms
 
