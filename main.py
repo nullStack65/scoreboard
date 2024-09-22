@@ -168,29 +168,32 @@ class PingPongScoreboard:
                     # Button was just pressed
                     self.button_pressed[player] = True
                     self.button_pressed_time[player] = current_time
+                    self.reset_triggered = False  # Reset trigger flag when button is pressed
                     print(f"Player {player} button pressed.")
                 else:
                     # Button is being held, check how long it's been held
                     press_duration = current_time - self.button_pressed_time[player]
                     if press_duration > 3:
-                        # Button has been held for more than 5 seconds, reset scores
-                        print(f"Player {player} button held for {press_duration:.2f} seconds - resetting scores.")
-                        self.reset_scores()
-                        self.button_pressed[player] = False  # Reset the pressed state to avoid multiple resets
+                        if not self.reset_triggered:
+                            # Button has been held for more than 5 seconds, reset scores
+                            print(f"Player {player} button held for {press_duration:.2f} seconds - resetting scores.")
+                            self.reset_scores()
+                            self.reset_triggered = True  # Mark that reset has occurred
             else:
                 if self.button_pressed[player]:
                     # Button was just released
                     press_duration = current_time - self.button_pressed_time[player]
                     self.button_pressed[player] = False
 
-                    if press_duration <= 3 and press_duration > 0.01:
+                    if press_duration <= 3 and press_duration > 0.01 and not self.reset_triggered:
                         # If button press was not long enough for reset but valid for a point
                         print(f"Player {player} button pressed for {press_duration:.2f} seconds - adding point.")
                         self.add_point(player)
                     else:
-                        print(f"Player {player} button press ignored.")
+                        print(f"Player {player} button press ignored (reset occurred or too short).")
 
-        self.master.after(100, self.check_buttons)  # Check every 100ms
+        self.master.after(50, self.check_buttons)  # Check every 100ms
+
 
 
     def exit_app(self):
