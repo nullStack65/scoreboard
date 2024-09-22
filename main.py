@@ -5,7 +5,7 @@ import time
 
 # GPIO Setup
 GPIO.setmode(GPIO.BCM)
-PLAYER1_BUTTON = 26
+PLAYER1_BUTTON = 27
 PLAYER2_BUTTON = 18
 GPIO.setup(PLAYER1_BUTTON, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 GPIO.setup(PLAYER2_BUTTON, GPIO.IN, pull_up_down=GPIO.PUD_UP)
@@ -15,8 +15,14 @@ class PingPongScoreboard:
         self.master = master
         master.title("Ping Pong Scoreboard")
         
-        # Make the application fullscreen
-        master.attributes('-fullscreen', True)
+        # Set window size to match screen resolution
+        master.geometry("1024x600")
+        
+        # Remove window decorations
+        master.overrideredirect(True)
+        
+        # Make sure the window is on top
+        master.attributes('-topmost', True)
 
         self.player1_score = 0
         self.player2_score = 0
@@ -30,17 +36,22 @@ class PingPongScoreboard:
         self.check_buttons()
 
     def create_widgets(self):
-        self.player1_label = ttk.Label(self.master, text="Player 1", font=("Arial", 24))
-        self.player1_label.grid(row=0, column=0, padx=20, pady=10)
+        self.master.grid_rowconfigure(0, weight=1)
+        self.master.grid_rowconfigure(3, weight=1)
+        self.master.grid_columnconfigure(0, weight=1)
+        self.master.grid_columnconfigure(2, weight=1)
 
-        self.player2_label = ttk.Label(self.master, text="Player 2", font=("Arial", 24))
-        self.player2_label.grid(row=0, column=2, padx=20, pady=10)
+        self.player1_label = ttk.Label(self.master, text="Player 1", font=("Arial", 36))
+        self.player1_label.grid(row=1, column=0, padx=20, pady=10, sticky="nsew")
 
-        self.score_label = ttk.Label(self.master, text="0 - 0", font=("Arial", 48))
-        self.score_label.grid(row=1, column=0, columnspan=3, pady=20)
+        self.player2_label = ttk.Label(self.master, text="Player 2", font=("Arial", 36))
+        self.player2_label.grid(row=1, column=2, padx=20, pady=10, sticky="nsew")
 
-        self.serving_label = ttk.Label(self.master, text="Serving: Player 1", font=("Arial", 18))
-        self.serving_label.grid(row=2, column=0, columnspan=3, pady=10)
+        self.score_label = ttk.Label(self.master, text="0 - 0", font=("Arial", 72))
+        self.score_label.grid(row=2, column=0, columnspan=3, pady=20, sticky="nsew")
+
+        self.serving_label = ttk.Label(self.master, text="Serving: Player 1", font=("Arial", 24))
+        self.serving_label.grid(row=3, column=0, columnspan=3, pady=10, sticky="nsew")
 
     def update_display(self):
         self.score_label.config(text=f"{self.player1_score} - {self.player2_score}")
