@@ -15,11 +15,8 @@ class PingPongScoreboard:
         self.master = master
         master.title("Ping Pong Scoreboard")
         
-        # Set window size to match screen resolution
-        master.geometry("1024x600")
-        
-        # Remove window decorations
-        master.overrideredirect(True)
+        # Set window to fullscreen
+        master.attributes('-fullscreen', True)
         
         # Make sure the window is on top
         master.attributes('-topmost', True)
@@ -36,26 +33,63 @@ class PingPongScoreboard:
         self.check_buttons()
 
     def create_widgets(self):
-        self.master.grid_rowconfigure(0, weight=1)
-        self.master.grid_rowconfigure(3, weight=1)
-        self.master.grid_columnconfigure(0, weight=1)
-        self.master.grid_columnconfigure(2, weight=1)
+        # Use a main frame to hold all widgets with padding
+        main_frame = ttk.Frame(self.master, padding=20)
+        main_frame.pack(expand=True, fill=BOTH)
 
-        self.player1_label = ttk.Label(self.master, text="Player 1", font=("Arial", 36))
-        self.player1_label.grid(row=1, column=0, padx=20, pady=10, sticky="nsew")
+        # Configure grid layout
+        main_frame.columnconfigure(0, weight=1)
+        main_frame.columnconfigure(1, weight=1)
+        main_frame.rowconfigure(0, weight=1)
+        main_frame.rowconfigure(1, weight=3)
+        main_frame.rowconfigure(2, weight=1)
 
-        self.player2_label = ttk.Label(self.master, text="Player 2", font=("Arial", 36))
-        self.player2_label.grid(row=1, column=2, padx=20, pady=10, sticky="nsew")
+        # Player 1 Frame
+        self.player1_frame = ttk.Frame(main_frame, padding=10)
+        self.player1_frame.grid(row=1, column=0, sticky="nsew")
+        self.player1_frame.columnconfigure(0, weight=1)
+        
+        self.player1_label = ttk.Label(self.player1_frame, text="Player 1", font=("Arial", 36))
+        self.player1_label.pack(pady=(0, 10))
+        
+        self.player1_score_label = ttk.Label(self.player1_frame, text="0", font=("Arial", 100))
+        self.player1_score_label.pack()
+        
+        self.player1_serving_label = ttk.Label(self.player1_frame, text="", font=("Arial", 24))
+        self.player1_serving_label.pack(pady=(10, 0))
 
-        self.score_label = ttk.Label(self.master, text="0 - 0", font=("Arial", 72))
-        self.score_label.grid(row=2, column=0, columnspan=3, pady=20, sticky="nsew")
-
-        self.serving_label = ttk.Label(self.master, text="Serving: Player 1", font=("Arial", 24))
-        self.serving_label.grid(row=3, column=0, columnspan=3, pady=10, sticky="nsew")
+        # Player 2 Frame
+        self.player2_frame = ttk.Frame(main_frame, padding=10)
+        self.player2_frame.grid(row=1, column=1, sticky="nsew")
+        self.player2_frame.columnconfigure(0, weight=1)
+        
+        self.player2_label = ttk.Label(self.player2_frame, text="Player 2", font=("Arial", 36))
+        self.player2_label.pack(pady=(0, 10))
+        
+        self.player2_score_label = ttk.Label(self.player2_frame, text="0", font=("Arial", 100))
+        self.player2_score_label.pack()
+        
+        self.player2_serving_label = ttk.Label(self.player2_frame, text="", font=("Arial", 24))
+        self.player2_serving_label.pack(pady=(10, 0))
 
     def update_display(self):
-        self.score_label.config(text=f"{self.player1_score} - {self.player2_score}")
-        self.serving_label.config(text=f"Serving: Player {self.serving}")
+        # Update scores
+        self.player1_score_label.config(text=str(self.player1_score))
+        self.player2_score_label.config(text=str(self.player2_score))
+
+        # Reset colors
+        self.player1_score_label.config(foreground="black")
+        self.player2_score_label.config(foreground="black")
+        self.player1_serving_label.config(text="")
+        self.player2_serving_label.config(text="")
+
+        # Highlight serving player
+        if self.serving == 1:
+            self.player1_score_label.config(foreground="red")
+            self.player1_serving_label.config(text="Serving")
+        else:
+            self.player2_score_label.config(foreground="red")
+            self.player2_serving_label.config(text="Serving")
 
     def add_point(self, player):
         if player == 1:
@@ -81,23 +115,35 @@ class PingPongScoreboard:
             self.end_game(2)
 
     def end_game(self, winner):
-        self.score_label.config(text=f"Player {winner} Wins!")
+        # Display winner message across the screen
+        winner_message = f"Player {winner} Wins!"
+        self.clear_widgets()
+        winner_label = ttk.Label(self.master, text=winner_message, font=("Arial", 72), foreground="green")
+        winner_label.place(relx=0.5, rely=0.5, anchor=CENTER)
         self.master.after(3000, self.reset_scores)
 
+    def clear_widgets(self):
+        for widget in self.master.winfo_children():
+            widget.destroy()
+
     def reset_scores(self):
+        # Recreate widgets after clearing
         self.player1_score = 0
         self.player2_score = 0
         self.serving = 1
+        self.create_widgets()
         self.update_display()
 
     def check_buttons(self):
         for player, pin in [(1, PLAYER1_BUTTON), (2, PLAYER2_BUTTON)]:
             if GPIO.input(pin) == GPIO.LOW:
                 current_time = time.time()
-                if current_time - self.last_press_time[player] > 5:
+                time_since_last = current_time - self.last_press_time[player]
+                
+                if time_since_last > 5:
                     print(f"Player {player} button held for reset")
                     self.reset_scores()
-                elif current_time - self.last_press_time[player] > 0.5:  # Debounce
+                elif time_since_last > 0.5:  # Debounce
                     print(f"Player {player} button pressed for point")
                     self.add_point(player)
                 self.last_press_time[player] = current_time
@@ -109,7 +155,8 @@ class PingPongScoreboard:
 if __name__ == "__main__":
     root = Tk()
     app = PingPongScoreboard(root)
-    root.mainloop()
-
-    # Cleanup GPIO on exit
-    GPIO.cleanup()
+    try:
+        root.mainloop()
+    finally:
+        # Cleanup GPIO on exit
+        GPIO.cleanup()
