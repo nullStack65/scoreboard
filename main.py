@@ -15,8 +15,11 @@ class PingPongScoreboard:
         self.master = master
         master.title("Ping Pong Scoreboard")
         
-        # Set window to fullscreen
-        master.attributes('-fullscreen', True)
+        # Set window size manually to 1024x600 in landscape mode
+        master.geometry("1024x600")
+        
+        # Optional: Remove window borders and make it fullscreen-like
+        # master.overrideredirect(True)
         
         # Make sure the window is on top
         master.attributes('-topmost', True)
@@ -34,18 +37,18 @@ class PingPongScoreboard:
 
     def create_widgets(self):
         # Use a main frame to hold all widgets with padding
-        main_frame = ttk.Frame(self.master, padding=20)
-        main_frame.pack(expand=True, fill=BOTH)
+        self.main_frame = ttk.Frame(self.master, padding=20)
+        self.main_frame.pack(expand=True, fill=BOTH)
 
         # Configure grid layout
-        main_frame.columnconfigure(0, weight=1)
-        main_frame.columnconfigure(1, weight=1)
-        main_frame.rowconfigure(0, weight=1)
-        main_frame.rowconfigure(1, weight=3)
-        main_frame.rowconfigure(2, weight=1)
+        self.main_frame.columnconfigure(0, weight=1)
+        self.main_frame.columnconfigure(1, weight=1)
+        self.main_frame.rowconfigure(0, weight=1)
+        self.main_frame.rowconfigure(1, weight=3)
+        self.main_frame.rowconfigure(2, weight=1)
 
         # Player 1 Frame
-        self.player1_frame = ttk.Frame(main_frame, padding=10)
+        self.player1_frame = ttk.Frame(self.main_frame, padding=10)
         self.player1_frame.grid(row=1, column=0, sticky="nsew")
         self.player1_frame.columnconfigure(0, weight=1)
         
@@ -59,7 +62,7 @@ class PingPongScoreboard:
         self.player1_serving_label.pack(pady=(10, 0))
 
         # Player 2 Frame
-        self.player2_frame = ttk.Frame(main_frame, padding=10)
+        self.player2_frame = ttk.Frame(self.main_frame, padding=10)
         self.player2_frame.grid(row=1, column=1, sticky="nsew")
         self.player2_frame.columnconfigure(0, weight=1)
         
@@ -77,7 +80,7 @@ class PingPongScoreboard:
         self.player1_score_label.config(text=str(self.player1_score))
         self.player2_score_label.config(text=str(self.player2_score))
 
-        # Reset colors
+        # Reset colors and serving labels
         self.player1_score_label.config(foreground="black")
         self.player2_score_label.config(foreground="black")
         self.player1_serving_label.config(text="")
@@ -123,16 +126,21 @@ class PingPongScoreboard:
         self.master.after(3000, self.reset_scores)
 
     def clear_widgets(self):
+        # Clear only the main_frame to prevent unintended widget duplication
         for widget in self.master.winfo_children():
-            widget.destroy()
+            if widget != self.main_frame:
+                widget.destroy()
 
     def reset_scores(self):
-        # Recreate widgets after clearing
+        # Reset scores and serving
         self.player1_score = 0
         self.player2_score = 0
         self.serving = 1
-        self.create_widgets()
         self.update_display()
+        # Remove winner label if it exists
+        for widget in self.master.winfo_children():
+            if isinstance(widget, ttk.Label) and "Wins!" in widget.cget("text"):
+                widget.destroy()
 
     def check_buttons(self):
         for player, pin in [(1, PLAYER1_BUTTON), (2, PLAYER2_BUTTON)]:
