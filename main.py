@@ -35,16 +35,23 @@ class PingPongScoreboard:
         # Keep the window on top
         master.attributes('-topmost', True)
 
+        # Initialize scores and serving
         self.player1_score = 0
         self.player2_score = 0
         self.serving = 1  # Player 1 starts serving
-        self.last_press_time = {1: 0, 2: 0}
+
+        # Initialize last_press_time to current time to prevent immediate resets
+        current_time = time.time()
+        self.last_press_time = {1: current_time, 2: current_time}
 
         self.create_widgets()
         self.update_display()
 
         # Start checking GPIO inputs
         self.check_buttons()
+
+        # Optional: Bind the Esc key to exit the application
+        master.bind("<Escape>", lambda e: self.exit_app())
 
     def create_widgets(self):
         # Use a main frame to hold all widgets with padding
@@ -162,7 +169,7 @@ class PingPongScoreboard:
                 if time_since_last > 5:
                     print(f"Player {player} button held for reset")
                     self.reset_scores()
-                elif time_since_last > 0.5:  # Debounce
+                elif time_since_last > 0.2:  # Reduced Debounce from 0.5 to 0.2 seconds
                     print(f"Player {player} button pressed for point")
                     self.add_point(player)
                 self.last_press_time[player] = current_time
@@ -170,6 +177,9 @@ class PingPongScoreboard:
                 print(f"Player {player} button not pressed")
 
         self.master.after(100, self.check_buttons)  # Check every 100ms
+
+    def exit_app(self):
+        self.master.destroy()
 
 if __name__ == "__main__":
     root = Tk()
