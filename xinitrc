@@ -1,2 +1,2 @@
 #!/bin/sh
-python3 /path/to/your/ping_pong_scoreboard.py
+python3 ~/scoreboard/main.py
