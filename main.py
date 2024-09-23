@@ -14,14 +14,11 @@ try:
 except ImportError:
     USE_GPIO = False
 
-# For keyboard input when not on RPI
-if not USE_GPIO:
-    from pynput import keyboard
-
 class PingPongScoreboard:
     def __init__(self, master):
         self.master = master
         master.title("Ping Pong Scoreboard")
+        master.configure(bg="#2C3E50")
 
         # Remove window decorations (borders, title bar)
         if USE_GPIO:
@@ -39,14 +36,13 @@ class PingPongScoreboard:
         self.player1_score = 0
         self.player2_score = 0
         self.serving = 1  # Player 1 starts serving
+        self.player1_games_won = 0
+        self.player2_games_won = 0
 
-        # Initialize button states and press times
+        # Initialize button states
         self.button_pressed = {1: False, 2: False}
-        self.button_pressed_time = {1: 0, 2: 0}
-
-        # Initialize double-click detection
         self.last_click_time = 0
-        self.click_threshold = 0.3  # seconds for double-click detection
+        self.click_threshold = 0.5  # seconds for double-click detection
 
         self.create_widgets()
         self.update_display()
@@ -54,96 +50,99 @@ class PingPongScoreboard:
         # Start checking button inputs
         if USE_GPIO:
             self.check_buttons()
-        else:
-            self.setup_keyboard_controls()
 
         # Optional: Bind the Esc key to exit the application
         master.bind("<Escape>", lambda e: self.exit_app())
-        master.bind("<Double-Button-1>", self.handle_double_click)  # Bind double click
 
     def create_widgets(self):
         # Create the scoreboard layout
-        self.main_frame = ttk.Frame(self.master, padding=20)
+        self.main_frame = ttk.Frame(self.master, padding=20, style='Main.TFrame')
         self.main_frame.pack(expand=True, fill=BOTH)
 
         self.main_frame.columnconfigure(0, weight=1)
         self.main_frame.columnconfigure(1, weight=1)
         self.main_frame.rowconfigure(0, weight=1)
         self.main_frame.rowconfigure(1, weight=3)
-        self.main_frame.rowconfigure(2, weight=1)
 
         # Player 1 Frame
-        self.player1_frame = ttk.Frame(self.main_frame, padding=10)
+        self.player1_frame = ttk.Frame(self.main_frame, padding=10, style='Player.TFrame')
         self.player1_frame.grid(row=1, column=0, sticky="nsew")
-        self.player1_label = ttk.Label(self.player1_frame, text="Player 1", font=("Arial", 36))
+        self.player1_label = ttk.Label(self.player1_frame, text="Player 1", font=("Arial", 36, "bold"), style='Player.TLabel')
         self.player1_label.pack(pady=(0, 10))
-        self.player1_score_label = ttk.Label(self.player1_frame, text="0", font=("Arial", 100))
+        self.player1_score_label = ttk.Label(self.player1_frame, text="0", font=("Arial", 100, "bold"), style='Score.TLabel')
         self.player1_score_label.pack()
+        self.player1_games_label = ttk.Label(self.player1_frame, text="Games Won: 0", font=("Arial", 36, "bold"), style='Player.TLabel')  # Increased font size
+        self.player1_games_label.pack()
 
         # Player 2 Frame
-        self.player2_frame = ttk.Frame(self.main_frame, padding=10)
+        self.player2_frame = ttk.Frame(self.main_frame, padding=10, style='Player.TFrame')
         self.player2_frame.grid(row=1, column=1, sticky="nsew")
-        self.player2_label = ttk.Label(self.player2_frame, text="Player 2", font=("Arial", 36))
+        self.player2_label = ttk.Label(self.player2_frame, text="Player 2", font=("Arial", 36, "bold"), style='Player.TLabel')
         self.player2_label.pack(pady=(0, 10))
-        self.player2_score_label = ttk.Label(self.player2_frame, text="0", font=("Arial", 100))
+        self.player2_score_label = ttk.Label(self.player2_frame, text="0", font=("Arial", 100, "bold"), style='Score.TLabel')
         self.player2_score_label.pack()
+        self.player2_games_label = ttk.Label(self.player2_frame, text="Games Won: 0", font=("Arial", 36, "bold"), style='Player.TLabel')  # Increased font size
+        self.player2_games_label.pack()
+
+        # Add style
+        style = ttk.Style()
+        style.configure('Main.TFrame', background='#34495E')
+        style.configure('Player.TFrame', background='#2C3E50')
+        style.configure('Player.TLabel', background='#2C3E50', foreground='white')
+        style.configure('Score.TLabel', background='#2C3E50', foreground='white')
+        style.configure('TButton', font=("Arial", 16), padding=10)
 
     def update_display(self):
         # Update scores and display
         self.player1_score_label.config(text=str(self.player1_score))
         self.player2_score_label.config(text=str(self.player2_score))
+        self.player1_games_label.config(text=f"Games Won: {self.player1_games_won}")
+        self.player2_games_label.config(text=f"Games Won: {self.player2_games_won}")
 
         # Reset colors and serving labels
-        self.player1_score_label.config(foreground="black")
-        self.player2_score_label.config(foreground="black")
+        self.player1_score_label.config(foreground="white")
+        self.player2_score_label.config(foreground="white")
 
         if self.serving == 1:
-            self.player1_score_label.config(foreground="red")
+            self.player1_score_label.config(foreground="#E74C3C")  # Red for Player 1 serving
         else:
-            self.player2_score_label.config(foreground="red")
+            self.player2_score_label.config(foreground="#E74C3C")  # Red for Player 2 serving
 
     def add_point(self, player):
+        if self.player1_score >= 10 or self.player2_score >= 10:
+            # Swap serve every point if score is 10 or more
+            self.serving = 2 if self.serving == 1 else 1
+
         if player == 1:
             self.player1_score += 1
         else:
             self.player2_score += 1
+        
+        # Check for game win condition
+        if self.player1_score >= 11 and self.player1_score - self.player2_score >= 2:
+            self.player1_games_won += 1
+            self.reset_scores()
+        elif self.player2_score >= 11 and self.player2_score - self.player1_score >= 2:
+            self.player2_games_won += 1
+            self.reset_scores()
+        
         self.update_display()
+
+    def reset_scores(self):
+        # Reset scores for a new game
+        self.player1_score = 0
+        self.player2_score = 0
 
     def check_buttons(self):
         # GPIO logic to check button states
-        current_time = time.time()
         for player, pin in [(1, PLAYER1_BUTTON), (2, PLAYER2_BUTTON)]:
-            if GPIO.input(pin) == GPIO.LOW:
-                # Button handling logic here...
-                pass  # (similar to your existing logic)
+            if GPIO.input(pin) == GPIO.LOW and not self.button_pressed[player]:
+                self.add_point(player)
+                self.button_pressed[player] = True
+            elif GPIO.input(pin) == GPIO.HIGH:
+                self.button_pressed[player] = False
 
         self.master.after(50, self.check_buttons)
-
-    def setup_keyboard_controls(self):
-        # Setup keyboard controls using pynput
-        def on_press(key):
-            try:
-                if key.char == 'a':  # Simulate Player 1 button
-                    self.add_point(1)
-                elif key.char == 'l':  # Simulate Player 2 button
-                    self.add_point(2)
-            except AttributeError:
-                pass  # Handle special keys if needed
-
-        listener = keyboard.Listener(on_press=on_press)
-        listener.start()
-
-    def handle_double_click(self, event):
-        current_time = time.time()
-        if current_time - self.last_click_time <= self.click_threshold:
-            # Double click detected
-            self.change_server()
-        self.last_click_time = current_time
-
-    def change_server(self):
-        # Change the serving player
-        self.serving = 1 if self.serving == 2 else 2
-        self.update_display()
 
     def exit_app(self):
         if USE_GPIO:
