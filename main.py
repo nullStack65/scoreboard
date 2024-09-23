@@ -39,16 +39,23 @@ class PingPongScoreboard:
         self.player1_games_won = 0
         self.player2_games_won = 0
 
+        # Serve count tracking
+        self.serve_count = 0
+        self.serves_per_change = 2  # Number of serves before automatic server swap
+
         # Initialize button states and press timing
         self.button_pressed = {1: False, 2: False}
         self.button_press_start_time = {1: None, 2: None}
         self.reset_time_threshold = 5  # seconds for button hold to reset
-        self.last_click_time = 0
+
+        # Double-click tracking
+        self.click_pending = {1: False, 2: False}
+        self.click_after_id = {1: None, 2: None}
         self.click_threshold = 0.5  # seconds for double-click detection
 
-        # Create a label for displaying win messages
-        self.win_message_label = ttk.Label(master, text="", font=("Arial", 48, "bold"), style='Score.TLabel')
-        self.win_message_label.pack(pady=20)
+        # Victory message label
+        self.victory_label = ttk.Label(master, text="", font=("Arial", 48, "bold"), style='Score.TLabel')
+        self.victory_label.pack(pady=20)
 
         self.create_widgets()
         self.update_display()
@@ -123,7 +130,15 @@ class PingPongScoreboard:
             self.player1_score += 1
         else:
             self.player2_score += 1
-        
+
+        # Increment serve count
+        self.serve_count += 1
+
+        # Check if it's time to swap server automatically
+        if self.serve_count >= self.serves_per_change:
+            self.swap_server()
+            self.serve_count = 0
+
         # Check for game win condition
         if self.player1_score >= 11 and self.player1_score - self.player2_score >= 2:
             self.player1_games_won += 1
@@ -131,49 +146,92 @@ class PingPongScoreboard:
         elif self.player2_score >= 11 and self.player2_score - self.player1_score >= 2:
             self.player2_games_won += 1
             self.show_win_message("Player 2 Wins!")
-        
+
+        self.update_display()
+
+    def swap_server(self):
+        # Swap the serving player
+        self.serving = 2 if self.serving == 1 else 1
         self.update_display()
 
     def show_win_message(self, message):
         # Display the win message
-        self.win_message_label.config(text=message)
+        self.victory_label.config(text=message)
         self.master.after(2000, self.reset_scores)  # Delay reset for 2 seconds
 
     def reset_scores(self):
         # Reset scores for a new game
         self.player1_score = 0
         self.player2_score = 0
-        self.win_message_label.config(text="")  # Clear win message
+        self.serve_count = 0  # Reset serve count
+        self.victory_label.config(text="")  # Clear win message
         self.update_display()
 
+    def handle_single_click(self, player):
+        if self.click_pending[player]:
+            self.add_point(player)
+            self.click_pending[player] = False
+            self.click_after_id[player] = None
+
     def check_buttons(self):
+        current_time = time.time()
+
         # GPIO logic to check button states
         for player, pin in [(1, PLAYER1_BUTTON), (2, PLAYER2_BUTTON)]:
             if GPIO.input(pin) == GPIO.LOW:  # Button pressed
                 if not self.button_pressed[player]:  # If not already pressed
                     self.button_pressed[player] = True
-                    self.button_press_start_time[player] = time.time()  # Record start time
+                    self.button_press_start_time[player] = current_time  # Record start time
                 else:  # If button is already pressed
                     # Check if the button has been held long enough to reset
-                    elapsed_time = time.time() - self.button_press_start_time[player]
+                    elapsed_time = current_time - self.button_press_start_time[player]
                     if elapsed_time >= self.reset_time_threshold:
                         self.reset_scores()  # Reset the scores
                         self.button_pressed[player] = False  # Prevent repeated resets
-                        continue  # Skip point addition
+                        self.button_press_start_time[player] = None
+                        # Cancel any pending single-click actions
+                        if self.click_after_id[player]:
+                            self.master.after_cancel(self.click_after_id[player])
+                            self.click_after_id[player] = None
+                            self.click_pending[player] = False
             else:  # Button released
                 if self.button_pressed[player]:  # If it was pressed
                     self.button_pressed[player] = False
+                    elapsed_time = current_time - self.button_press_start_time[player]
                     self.button_press_start_time[player] = None  # Reset start time
 
-                    # Check if the button was held long enough to reset; if not, add a point
-                    elapsed_time = time.time() - self.button_press_start_time[player]
-                    if elapsed_time < self.reset_time_threshold:
-                        self.add_point(player)  # Add a point only if it wasn't a reset
+                    if elapsed_time >= self.reset_time_threshold:
+                        # Already handled reset above; do nothing
+                        continue
+
+                    # Double-click detection
+                    if self.click_pending[player]:
+                        # Check if the time since last click is within threshold
+                        time_since_last_click = current_time - self.last_click_time.get(player, 0)
+                        if time_since_last_click <= self.click_threshold:
+                            # Double-click detected
+                            if self.click_after_id[player]:
+                                self.master.after_cancel(self.click_after_id[player])
+                            self.swap_server()
+                            self.click_pending[player] = False
+                            self.click_after_id[player] = None
+                        else:
+                            # Not a double-click; treat as single-click
+                            self.click_pending[player] = True
+                            self.last_click_time[player] = current_time
+                            self.click_after_id[player] = self.master.after(int(self.click_threshold * 1000),
+                                                                             lambda p=player: self.handle_single_click(p))
+                    else:
+                        # First click; set pending and wait for possible double-click
+                        self.click_pending[player] = True
+                        self.last_click_time[player] = current_time
+                        self.click_after_id[player] = self.master.after(int(self.click_threshold * 1000),
+                                                                         lambda p=player: self.handle_single_click(p))
                 else:
-                    continue  # If it wasn't pressed, do nothing
+                    # Button was not pressed; do nothing
+                    continue
 
         self.master.after(50, self.check_buttons)
-
 
     def exit_app(self):
         if USE_GPIO:
