@@ -33,7 +33,7 @@ class PingPongScoreboard:
             master.resizable(False, False)
             master.attributes('-topmost', True)
         else:
-            root.geometry("1024x600")
+            master.geometry("1024x600")
 
         # Initialize scores and serving
         self.player1_score = 0
@@ -43,6 +43,10 @@ class PingPongScoreboard:
         # Initialize button states and press times
         self.button_pressed = {1: False, 2: False}
         self.button_pressed_time = {1: 0, 2: 0}
+
+        # Initialize double-click detection
+        self.last_click_time = 0
+        self.click_threshold = 0.3  # seconds for double-click detection
 
         self.create_widgets()
         self.update_display()
@@ -55,6 +59,7 @@ class PingPongScoreboard:
 
         # Optional: Bind the Esc key to exit the application
         master.bind("<Escape>", lambda e: self.exit_app())
+        master.bind("<Double-Button-1>", self.handle_double_click)  # Bind double click
 
     def create_widgets(self):
         # Create the scoreboard layout
@@ -127,6 +132,18 @@ class PingPongScoreboard:
 
         listener = keyboard.Listener(on_press=on_press)
         listener.start()
+
+    def handle_double_click(self, event):
+        current_time = time.time()
+        if current_time - self.last_click_time <= self.click_threshold:
+            # Double click detected
+            self.change_server()
+        self.last_click_time = current_time
+
+    def change_server(self):
+        # Change the serving player
+        self.serving = 1 if self.serving == 2 else 2
+        self.update_display()
 
     def exit_app(self):
         if USE_GPIO:
