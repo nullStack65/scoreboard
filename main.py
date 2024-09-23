@@ -39,8 +39,10 @@ class PingPongScoreboard:
         self.player1_games_won = 0
         self.player2_games_won = 0
 
-        # Initialize button states
+        # Initialize button states and press timing
         self.button_pressed = {1: False, 2: False}
+        self.button_press_start_time = {1: None, 2: None}
+        self.reset_time_threshold = 5  # seconds for button hold to reset
         self.last_click_time = 0
         self.click_threshold = 0.5  # seconds for double-click detection
 
@@ -147,11 +149,26 @@ class PingPongScoreboard:
     def check_buttons(self):
         # GPIO logic to check button states
         for player, pin in [(1, PLAYER1_BUTTON), (2, PLAYER2_BUTTON)]:
-            if GPIO.input(pin) == GPIO.LOW and not self.button_pressed[player]:
+            if GPIO.input(pin) == GPIO.LOW:  # Button pressed
+                if not self.button_pressed[player]:  # If not already pressed
+                    self.button_pressed[player] = True
+                    self.button_press_start_time[player] = time.time()  # Record start time
+                else:  # If button is already pressed
+                    # Check if the button has been held long enough to reset
+                    elapsed_time = time.time() - self.button_press_start_time[player]
+                    if elapsed_time >= self.reset_time_threshold:
+                        self.reset_scores()  # Reset the scores
+                        self.button_pressed[player] = False  # Prevent repeated resets
+                        continue  # Skip point addition
+            else:  # Button released
+                if self.button_pressed[player]:  # If it was pressed
+                    self.button_pressed[player] = False
+                    self.button_press_start_time[player] = None  # Reset start time
+                else:
+                    continue  # If it wasn't pressed, do nothing
+
+                # Add a point only if the button was just released
                 self.add_point(player)
-                self.button_pressed[player] = True
-            elif GPIO.input(pin) == GPIO.HIGH:
-                self.button_pressed[player] = False
 
         self.master.after(50, self.check_buttons)
 
