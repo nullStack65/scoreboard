@@ -71,7 +71,7 @@ class PingPongScoreboard:
         self.player1_label.pack(pady=(0, 10))
         self.player1_score_label = ttk.Label(self.player1_frame, text="0", font=("Arial", 100, "bold"), style='Score.TLabel')
         self.player1_score_label.pack()
-        self.player1_games_label = ttk.Label(self.player1_frame, text="Games Won: 0", font=("Arial", 36, "bold"), style='Player.TLabel')  # Increased font size
+        self.player1_games_label = ttk.Label(self.player1_frame, text="Games Won: 0", font=("Arial", 24), style='Player.TLabel')
         self.player1_games_label.pack()
 
         # Player 2 Frame
@@ -81,7 +81,7 @@ class PingPongScoreboard:
         self.player2_label.pack(pady=(0, 10))
         self.player2_score_label = ttk.Label(self.player2_frame, text="0", font=("Arial", 100, "bold"), style='Score.TLabel')
         self.player2_score_label.pack()
-        self.player2_games_label = ttk.Label(self.player2_frame, text="Games Won: 0", font=("Arial", 36, "bold"), style='Player.TLabel')  # Increased font size
+        self.player2_games_label = ttk.Label(self.player2_frame, text="Games Won: 0", font=("Arial", 24), style='Player.TLabel')
         self.player2_games_label.pack()
 
         # Add style
