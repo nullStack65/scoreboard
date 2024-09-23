@@ -164,13 +164,16 @@ class PingPongScoreboard:
                 if self.button_pressed[player]:  # If it was pressed
                     self.button_pressed[player] = False
                     self.button_press_start_time[player] = None  # Reset start time
+
+                    # Check if the button was held long enough to reset; if not, add a point
+                    elapsed_time = time.time() - self.button_press_start_time[player]
+                    if elapsed_time < self.reset_time_threshold:
+                        self.add_point(player)  # Add a point only if it wasn't a reset
                 else:
                     continue  # If it wasn't pressed, do nothing
 
-                # Add a point only if the button was just released
-                self.add_point(player)
-
         self.master.after(50, self.check_buttons)
+
 
     def exit_app(self):
         if USE_GPIO:
