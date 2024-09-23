@@ -44,6 +44,10 @@ class PingPongScoreboard:
         self.last_click_time = 0
         self.click_threshold = 0.5  # seconds for double-click detection
 
+        # Victory message label
+        self.victory_label = ttk.Label(master, text="", font=("Arial", 48, "bold"), background="#2C3E50", foreground="white")
+        self.victory_label.pack(pady=(50, 0))
+
         self.create_widgets()
         self.update_display()
 
@@ -121,17 +125,32 @@ class PingPongScoreboard:
         # Check for game win condition
         if self.player1_score >= 11 and self.player1_score - self.player2_score >= 2:
             self.player1_games_won += 1
+            self.display_winner(1)
             self.reset_scores()
         elif self.player2_score >= 11 and self.player2_score - self.player1_score >= 2:
             self.player2_games_won += 1
+            self.display_winner(2)
             self.reset_scores()
         
         self.update_display()
+
+    def display_winner(self, player):
+        # Show the winner
+        if player == 1:
+            self.victory_label.config(text="Player 1 Wins!", foreground="green")
+        else:
+            self.victory_label.config(text="Player 2 Wins!", foreground="blue")
+        
+        # Flashing effect
+        for _ in range(3):
+            self.master.after(500, lambda: self.victory_label.config(foreground="yellow"))
+            self.master.after(1000, lambda: self.victory_label.config(foreground="green" if player == 1 else "blue"))
 
     def reset_scores(self):
         # Reset scores for a new game
         self.player1_score = 0
         self.player2_score = 0
+        self.victory_label.config(text="")  # Clear victory message
 
     def check_buttons(self):
         # GPIO logic to check button states
