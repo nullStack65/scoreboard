@@ -43,11 +43,13 @@ class PingPongScoreboard:
         self.button_pressed = {1: False, 2: False}
         self.button_press_start_time = {1: None, 2: None}
         self.reset_time_threshold = 5  # seconds for button hold to reset
-        self.last_click_time = 0
         self.click_threshold = 0.5  # seconds for double-click detection
 
         # Initialize reset flags
         self.reset_occurred = {1: False, 2: False}
+
+        # Initialize click timers for double-click detection
+        self.click_timer = {1: None, 2: None}
 
         # Create a label for displaying win messages
         self.win_message_label = ttk.Label(master, text="", font=("Arial", 48, "bold"), style='Score.TLabel')
@@ -126,7 +128,7 @@ class PingPongScoreboard:
             self.player1_score += 1
         else:
             self.player2_score += 1
-        
+
         # Check for game win condition
         if self.player1_score >= 11 and self.player1_score - self.player2_score >= 2:
             self.player1_games_won += 1
@@ -134,7 +136,7 @@ class PingPongScoreboard:
         elif self.player2_score >= 11 and self.player2_score - self.player1_score >= 2:
             self.player2_games_won += 1
             self.show_win_message("Player 2 Wins!")
-        
+
         self.update_display()
 
     def show_win_message(self, message):
@@ -147,6 +149,26 @@ class PingPongScoreboard:
         self.player1_score = 0
         self.player2_score = 0
         self.win_message_label.config(text="")  # Clear win message
+        self.update_display()
+
+    def schedule_single_click(self, player):
+        """Schedule the single click action after click_threshold seconds."""
+        self.click_timer[player] = self.master.after(int(self.click_threshold * 1000), lambda: self.handle_single_click(player))
+
+    def cancel_single_click(self, player):
+        """Cancel the scheduled single click action."""
+        if self.click_timer[player] is not None:
+            self.master.after_cancel(self.click_timer[player])
+            self.click_timer[player] = None
+
+    def handle_single_click(self, player):
+        """Handle a single click by adding a point."""
+        self.add_point(player)
+        self.click_timer[player] = None
+
+    def toggle_serving(self, player):
+        """Toggle the serving player."""
+        self.serving = player
         self.update_display()
 
     def check_buttons(self):
@@ -163,14 +185,23 @@ class PingPongScoreboard:
                         self.reset_scores()  # Reset the scores
                         self.button_pressed[player] = False  # Prevent repeated resets
                         self.reset_occurred[player] = True  # Set reset flag
+                        # When a reset occurs, do not handle click actions
+                        self.cancel_single_click(player)  # Cancel any pending single click
                         continue  # Skip point addition
             else:  # Button released
                 if self.button_pressed[player]:  # If it was pressed
                     self.button_pressed[player] = False
                     self.button_press_start_time[player] = None  # Reset start time
                     if not self.reset_occurred[player]:
-                        self.add_point(player)
+                        if self.click_timer[player] is not None:
+                            # Second click detected within threshold, double-click
+                            self.cancel_single_click(player)
+                            self.toggle_serving(player)
+                        else:
+                            # Start a single-click timer
+                            self.schedule_single_click(player)
                     else:
+                        # Reset occurred, do not add a point
                         self.reset_occurred[player] = False  # Reset the flag
                 else:
                     continue  # If it wasn't pressed, do nothing
