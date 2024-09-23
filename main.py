@@ -166,9 +166,9 @@ class PingPongScoreboard:
         self.add_point(player)
         self.click_timer[player] = None
 
-    def toggle_serving(self, player):
-        """Toggle the serving player."""
-        self.serving = player
+    def toggle_serving(self):
+        """Toggle the serving player between Player 1 and Player 2."""
+        self.serving = 2 if self.serving == 1 else 1
         self.update_display()
 
     def check_buttons(self):
@@ -196,7 +196,7 @@ class PingPongScoreboard:
                         if self.click_timer[player] is not None:
                             # Second click detected within threshold, double-click
                             self.cancel_single_click(player)
-                            self.toggle_serving(player)
+                            self.toggle_serving()  # Toggle serving regardless of which button was double-clicked
                         else:
                             # Start a single-click timer
                             self.schedule_single_click(player)
