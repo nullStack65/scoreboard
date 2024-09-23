@@ -46,6 +46,9 @@ class PingPongScoreboard:
         self.last_click_time = 0
         self.click_threshold = 0.5  # seconds for double-click detection
 
+        # Initialize reset flags
+        self.reset_occurred = {1: False, 2: False}
+
         # Create a label for displaying win messages
         self.win_message_label = ttk.Label(master, text="", font=("Arial", 48, "bold"), style='Score.TLabel')
         self.win_message_label.pack(pady=20)
@@ -159,16 +162,18 @@ class PingPongScoreboard:
                     if elapsed_time >= self.reset_time_threshold:
                         self.reset_scores()  # Reset the scores
                         self.button_pressed[player] = False  # Prevent repeated resets
+                        self.reset_occurred[player] = True  # Set reset flag
                         continue  # Skip point addition
             else:  # Button released
                 if self.button_pressed[player]:  # If it was pressed
                     self.button_pressed[player] = False
                     self.button_press_start_time[player] = None  # Reset start time
+                    if not self.reset_occurred[player]:
+                        self.add_point(player)
+                    else:
+                        self.reset_occurred[player] = False  # Reset the flag
                 else:
                     continue  # If it wasn't pressed, do nothing
-
-                # Add a point only if the button was just released
-                self.add_point(player)
 
         self.master.after(50, self.check_buttons)
 
