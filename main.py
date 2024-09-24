@@ -205,9 +205,16 @@ class PingPongScoreboard:
         self.serve_counter += 1
 
         # Check if it's time to swap the serve
-        if self.serve_counter >= SWAP_SERVE_EVERY:
-            self.toggle_serving()
-            self.serve_counter = 0  # Reset the counter after swapping
+        if self.player1_score >= 10 and self.player2_score >= 10:
+            # Both players have at least 10 points: swap serve every point
+            if self.serve_counter >= 1:
+                self.toggle_serving()
+                self.serve_counter = 0  # Reset the counter after swapping
+        else:
+            # Swap serve after every two points
+            if self.serve_counter >= SWAP_SERVE_EVERY:
+                self.toggle_serving()
+                self.serve_counter = 0  # Reset the counter after swapping
 
         if player == 1:
             self.player1_score += 1
