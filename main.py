@@ -2,14 +2,47 @@ from tkinter import *
 from tkinter import ttk
 import time
 
+# =========================
+# Configuration Constants
+# =========================
+
+# Game Settings
+WIN_POINTS = 11          # Points required to win a game
+WIN_DIFFERENCE = 2       # Minimum point difference to win
+SWAP_SERVE_AFTER = 10    # Points after which serve swaps every point
+
+# Button Interaction Settings
+CLICK_THRESHOLD = 0.5          # Seconds for double-click detection
+RESET_HOLD_THRESHOLD = 5       # Seconds to hold button to reset
+
+# Color Schemes
+BG_COLOR = "#2C3E50"               # Background color of the main window
+MAIN_FRAME_BG = "#34495E"          # Background color of the main frame
+PLAYER_FRAME_BG = "#2C3E50"        # Background color of each player's frame
+PLAYER_LABEL_COLOR = "white"       # Text color for player labels
+SCORE_LABEL_COLOR = "white"        # Text color for score labels
+SERVING_COLOR = "#E74C3C"          # Color indicating which player is serving
+
+# Font Settings
+PLAYER_LABEL_FONT = ("Arial", 36, "bold")
+SCORE_LABEL_FONT = ("Arial", 100, "bold")
+GAMES_WON_FONT = ("Arial", 24)
+WIN_MESSAGE_FONT = ("Arial", 48, "bold")
+
+# GPIO Button Pins (for Raspberry Pi)
+PLAYER1_BUTTON_PIN = 26
+PLAYER2_BUTTON_PIN = 18
+
+# =========================
+# Ping Pong Scoreboard Class
+# =========================
+
 # Try to import GPIO for Raspberry Pi
 try:
     import RPi.GPIO as GPIO
     GPIO.setmode(GPIO.BCM)
-    PLAYER1_BUTTON = 26
-    PLAYER2_BUTTON = 18
-    GPIO.setup(PLAYER1_BUTTON, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-    GPIO.setup(PLAYER2_BUTTON, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+    GPIO.setup(PLAYER1_BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+    GPIO.setup(PLAYER2_BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
     USE_GPIO = True
 except ImportError:
     USE_GPIO = False
@@ -18,9 +51,9 @@ class PingPongScoreboard:
     def __init__(self, master):
         self.master = master
         master.title("Ping Pong Scoreboard")
-        master.configure(bg="#2C3E50")
+        master.configure(bg=BG_COLOR)
 
-        # Remove window decorations (borders, title bar)
+        # Remove window decorations (borders, title bar) for GPIO usage
         if USE_GPIO:
             master.overrideredirect(True)
             master.update_idletasks()  # Ensure screen size is updated
@@ -42,8 +75,6 @@ class PingPongScoreboard:
         # Initialize button states and press timing
         self.button_pressed = {1: False, 2: False}
         self.button_press_start_time = {1: None, 2: None}
-        self.reset_time_threshold = 5  # seconds for button hold to reset
-        self.click_threshold = 0.5  # seconds for double-click detection
 
         # Initialize reset flags
         self.reset_occurred = {1: False, 2: False}
@@ -52,7 +83,12 @@ class PingPongScoreboard:
         self.click_timer = {1: None, 2: None}
 
         # Create a label for displaying win messages
-        self.win_message_label = ttk.Label(master, text="", font=("Arial", 48, "bold"), style='Score.TLabel')
+        self.win_message_label = ttk.Label(
+            master, 
+            text="", 
+            font=WIN_MESSAGE_FONT, 
+            style='Score.TLabel'
+        )
         self.win_message_label.pack(pady=20)
 
         self.create_widgets()
@@ -67,7 +103,11 @@ class PingPongScoreboard:
 
     def create_widgets(self):
         # Create the scoreboard layout
-        self.main_frame = ttk.Frame(self.master, padding=20, style='Main.TFrame')
+        self.main_frame = ttk.Frame(
+            self.master, 
+            padding=20, 
+            style='Main.TFrame'
+        )
         self.main_frame.pack(expand=True, fill=BOTH)
 
         self.main_frame.columnconfigure(0, weight=1)
@@ -76,31 +116,69 @@ class PingPongScoreboard:
         self.main_frame.rowconfigure(1, weight=3)
 
         # Player 1 Frame
-        self.player1_frame = ttk.Frame(self.main_frame, padding=10, style='Player.TFrame')
+        self.player1_frame = ttk.Frame(
+            self.main_frame, 
+            padding=10, 
+            style='Player.TFrame'
+        )
         self.player1_frame.grid(row=1, column=0, sticky="nsew")
-        self.player1_label = ttk.Label(self.player1_frame, text="Player 1", font=("Arial", 36, "bold"), style='Player.TLabel')
+        self.player1_label = ttk.Label(
+            self.player1_frame, 
+            text="Player 1", 
+            font=PLAYER_LABEL_FONT, 
+            style='Player.TLabel'
+        )
         self.player1_label.pack(pady=(0, 10))
-        self.player1_score_label = ttk.Label(self.player1_frame, text="0", font=("Arial", 100, "bold"), style='Score.TLabel')
+        self.player1_score_label = ttk.Label(
+            self.player1_frame, 
+            text="0", 
+            font=SCORE_LABEL_FONT, 
+            style='Score.TLabel'
+        )
         self.player1_score_label.pack()
-        self.player1_games_label = ttk.Label(self.player1_frame, text="Games Won: 0", font=("Arial", 24), style='Player.TLabel')
+        self.player1_games_label = ttk.Label(
+            self.player1_frame, 
+            text="Games Won: 0", 
+            font=GAMES_WON_FONT, 
+            style='Player.TLabel'
+        )
         self.player1_games_label.pack()
 
         # Player 2 Frame
-        self.player2_frame = ttk.Frame(self.main_frame, padding=10, style='Player.TFrame')
+        self.player2_frame = ttk.Frame(
+            self.main_frame, 
+            padding=10, 
+            style='Player.TFrame'
+        )
         self.player2_frame.grid(row=1, column=1, sticky="nsew")
-        self.player2_label = ttk.Label(self.player2_frame, text="Player 2", font=("Arial", 36, "bold"), style='Player.TLabel')
+        self.player2_label = ttk.Label(
+            self.player2_frame, 
+            text="Player 2", 
+            font=PLAYER_LABEL_FONT, 
+            style='Player.TLabel'
+        )
         self.player2_label.pack(pady=(0, 10))
-        self.player2_score_label = ttk.Label(self.player2_frame, text="0", font=("Arial", 100, "bold"), style='Score.TLabel')
+        self.player2_score_label = ttk.Label(
+            self.player2_frame, 
+            text="0", 
+            font=SCORE_LABEL_FONT, 
+            style='Score.TLabel'
+        )
         self.player2_score_label.pack()
-        self.player2_games_label = ttk.Label(self.player2_frame, text="Games Won: 0", font=("Arial", 24), style='Player.TLabel')
+        self.player2_games_label = ttk.Label(
+            self.player2_frame, 
+            text="Games Won: 0", 
+            font=GAMES_WON_FONT, 
+            style='Player.TLabel'
+        )
         self.player2_games_label.pack()
 
         # Add style
         style = ttk.Style()
-        style.configure('Main.TFrame', background='#34495E')
-        style.configure('Player.TFrame', background='#2C3E50')
-        style.configure('Player.TLabel', background='#2C3E50', foreground='white')
-        style.configure('Score.TLabel', background='#2C3E50', foreground='white')
+        style.configure('Main.TFrame', background=MAIN_FRAME_BG)
+        style.configure('Player.TFrame', background=PLAYER_FRAME_BG)
+        style.configure('Player.TLabel', background=PLAYER_FRAME_BG, foreground=PLAYER_LABEL_COLOR)
+        style.configure('Score.TLabel', background=PLAYER_FRAME_BG, foreground=SCORE_LABEL_COLOR)
         style.configure('TButton', font=("Arial", 16), padding=10)
 
     def update_display(self):
@@ -111,17 +189,17 @@ class PingPongScoreboard:
         self.player2_games_label.config(text=f"Games Won: {self.player2_games_won}")
 
         # Reset colors and serving labels
-        self.player1_score_label.config(foreground="white")
-        self.player2_score_label.config(foreground="white")
+        self.player1_score_label.config(foreground=SCORE_LABEL_COLOR)
+        self.player2_score_label.config(foreground=SCORE_LABEL_COLOR)
 
         if self.serving == 1:
-            self.player1_score_label.config(foreground="#E74C3C")  # Red for Player 1 serving
+            self.player1_score_label.config(foreground=SERVING_COLOR)  # Serving player color
         else:
-            self.player2_score_label.config(foreground="#E74C3C")  # Red for Player 2 serving
+            self.player2_score_label.config(foreground=SERVING_COLOR)  # Serving player color
 
     def add_point(self, player):
-        if self.player1_score >= 10 or self.player2_score >= 10:
-            # Swap serve every point if score is 10 or more
+        if self.player1_score >= SWAP_SERVE_AFTER or self.player2_score >= SWAP_SERVE_AFTER:
+            # Swap serve every point if score is SWAP_SERVE_AFTER or more
             self.serving = 2 if self.serving == 1 else 1
 
         if player == 1:
@@ -130,10 +208,12 @@ class PingPongScoreboard:
             self.player2_score += 1
 
         # Check for game win condition
-        if self.player1_score >= 11 and self.player1_score - self.player2_score >= 2:
+        if (self.player1_score >= WIN_POINTS and 
+            self.player1_score - self.player2_score >= WIN_DIFFERENCE):
             self.player1_games_won += 1
             self.show_win_message("Player 1 Wins!")
-        elif self.player2_score >= 11 and self.player2_score - self.player1_score >= 2:
+        elif (self.player2_score >= WIN_POINTS and 
+              self.player2_score - self.player1_score >= WIN_DIFFERENCE):
             self.player2_games_won += 1
             self.show_win_message("Player 2 Wins!")
 
@@ -152,8 +232,11 @@ class PingPongScoreboard:
         self.update_display()
 
     def schedule_single_click(self, player):
-        """Schedule the single click action after click_threshold seconds."""
-        self.click_timer[player] = self.master.after(int(self.click_threshold * 1000), lambda: self.handle_single_click(player))
+        """Schedule the single click action after CLICK_THRESHOLD seconds."""
+        self.click_timer[player] = self.master.after(
+            int(CLICK_THRESHOLD * 1000), 
+            lambda: self.handle_single_click(player)
+        )
 
     def cancel_single_click(self, player):
         """Cancel the scheduled single click action."""
@@ -173,7 +256,7 @@ class PingPongScoreboard:
 
     def check_buttons(self):
         # GPIO logic to check button states
-        for player, pin in [(1, PLAYER1_BUTTON), (2, PLAYER2_BUTTON)]:
+        for player, pin in [(1, PLAYER1_BUTTON_PIN), (2, PLAYER2_BUTTON_PIN)]:
             if GPIO.input(pin) == GPIO.LOW:  # Button pressed
                 if not self.button_pressed[player]:  # If not already pressed
                     self.button_pressed[player] = True
@@ -181,7 +264,7 @@ class PingPongScoreboard:
                 else:  # If button is already pressed
                     # Check if the button has been held long enough to reset
                     elapsed_time = time.time() - self.button_press_start_time[player]
-                    if elapsed_time >= self.reset_time_threshold:
+                    if elapsed_time >= RESET_HOLD_THRESHOLD:
                         self.reset_scores()  # Reset the scores
                         self.button_pressed[player] = False  # Prevent repeated resets
                         self.reset_occurred[player] = True  # Set reset flag
@@ -212,6 +295,10 @@ class PingPongScoreboard:
         if USE_GPIO:
             GPIO.cleanup()
         self.master.destroy()
+
+# =========================
+# Main Application Entry
+# =========================
 
 if __name__ == "__main__":
     root = Tk()
