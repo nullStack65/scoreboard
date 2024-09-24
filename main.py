@@ -9,8 +9,6 @@ import time
 # Game Settings
 WIN_POINTS = 11          # Points required to win a game
 WIN_DIFFERENCE = 2       # Minimum point difference to win
-SWAP_SERVE_EVERY = 5
-SWAP_SERVE_AFTER = SWAP_SERVE_EVERY - 1  # After how many points to swap serve
 
 # Button Interaction Settings
 CLICK_THRESHOLD = 0.3          # Seconds for double-click detection
@@ -70,6 +68,7 @@ class PingPongScoreboard:
         self.player1_score = 0
         self.player2_score = 0
         self.serving = 1  # Player 1 starts serving
+        self.serve_count = 0  # Count serves for swapping
         self.player1_games_won = 0
         self.player2_games_won = 0
 
@@ -199,14 +198,22 @@ class PingPongScoreboard:
             self.player2_score_label.config(foreground=SERVING_COLOR)  # Serving player color
 
     def add_point(self, player):
-        if self.player1_score >= SWAP_SERVE_AFTER or self.player2_score >= SWAP_SERVE_AFTER:
-            # Swap serve every point if score is SWAP_SERVE_AFTER or more
-            self.serving = 2 if self.serving == 1 else 1
-
         if player == 1:
             self.player1_score += 1
         else:
             self.player2_score += 1
+
+        self.serve_count += 1
+
+        # Serve swapping logic
+        if self.player1_score >= 10 and self.player2_score >= 10:
+            # Swap every serve when both scores are 10 or more
+            self.serving = 2 if self.serving == 1 else 1
+            self.serve_count = 0
+        elif self.serve_count == 2:
+            # Swap every two serves otherwise
+            self.serving = 2 if self.serving == 1 else 1
+            self.serve_count = 0
 
         # Check for game win condition
         if (self.player1_score >= WIN_POINTS and 
@@ -229,6 +236,8 @@ class PingPongScoreboard:
         # Reset scores for a new game, but keep games won
         self.player1_score = 0
         self.player2_score = 0
+        self.serving = 1  # Player 1 starts serving in new game
+        self.serve_count = 0
         self.win_message_label.config(text="")  # Clear win message
         self.update_display()
 
@@ -238,6 +247,8 @@ class PingPongScoreboard:
         self.player2_score = 0
         self.player1_games_won = 0
         self.player2_games_won = 0
+        self.serving = 1  # Player 1 starts serving in new match
+        self.serve_count = 0
         self.win_message_label.config(text="")  # Clear win message
         self.update_display()
 
@@ -262,6 +273,7 @@ class PingPongScoreboard:
     def toggle_serving(self):
         """Toggle the serving player between Player 1 and Player 2."""
         self.serving = 2 if self.serving == 1 else 1
+        self.serve_count = 0
         self.update_display()
 
     def check_buttons(self):
