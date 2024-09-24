@@ -223,10 +223,17 @@ class PingPongScoreboard:
     def show_win_message(self, message):
         # Display the win message
         self.win_message_label.config(text=message)
-        self.master.after(2000, self.reset_scores)  # Delay reset for 2 seconds
+        self.master.after(2000, self.reset_game)  # Delay reset for 2 seconds
 
-    def reset_scores(self):
-        # Reset scores and games won for a new game
+    def reset_game(self):
+        # Reset scores for a new game, but keep games won
+        self.player1_score = 0
+        self.player2_score = 0
+        self.win_message_label.config(text="")  # Clear win message
+        self.update_display()
+
+    def reset_scoreboard(self):
+        # Reset scores and games won for a new match
         self.player1_score = 0
         self.player2_score = 0
         self.player1_games_won = 0
@@ -268,7 +275,7 @@ class PingPongScoreboard:
                     # Check if the button has been held long enough to reset
                     elapsed_time = time.time() - self.button_press_start_time[player]
                     if elapsed_time >= RESET_HOLD_THRESHOLD:
-                        self.reset_scores()  # Reset the scores and games won
+                        self.reset_scoreboard()  # Reset the scores and games won
                         self.button_pressed[player] = False  # Prevent repeated resets
                         self.reset_occurred[player] = True  # Set reset flag
                         # When a reset occurs, do not handle click actions
