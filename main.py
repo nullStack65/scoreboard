@@ -264,23 +264,16 @@ class PingPongScoreboard:
                 if not self.button_pressed[player]:  # If not already pressed
                     self.button_pressed[player] = True
                     self.button_press_start_time[player] = time.time()  # Record start time
-                    self.reset_occurred[player] = False  # Reset flag set to False
                 else:  # If button is already pressed
-                    # Check how long the button has been held
+                    # Check if the button has been held long enough to reset
                     elapsed_time = time.time() - self.button_press_start_time[player]
-                    
-                    # Update the scores continuously while holding the button
                     if elapsed_time >= RESET_HOLD_THRESHOLD:
                         self.reset_scores()  # Reset the scores and games won
                         self.button_pressed[player] = False  # Prevent repeated resets
                         self.reset_occurred[player] = True  # Set reset flag
+                        # When a reset occurs, do not handle click actions
                         self.cancel_single_click(player)  # Cancel any pending single click
                         continue  # Skip point addition
-                    else:
-                        # Update GUI to reflect that reset is in process
-                        reset_progress = int((elapsed_time / RESET_HOLD_THRESHOLD) * 100)
-                        self.win_message_label.config(text=f"Hold to reset... {reset_progress}%")
-
             else:  # Button released
                 if self.button_pressed[player]:  # If it was pressed
                     self.button_pressed[player] = False
@@ -300,7 +293,6 @@ class PingPongScoreboard:
                     continue  # If it wasn't pressed, do nothing
 
         self.master.after(50, self.check_buttons)
-
 
     def exit_app(self):
         if USE_GPIO:
