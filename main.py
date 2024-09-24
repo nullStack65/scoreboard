@@ -2,9 +2,9 @@ from tkinter import *
 from tkinter import ttk
 import time
 
-# =========================
+# ========================
 # Configuration Constants
-# =========================
+# ========================
 
 # Game Settings
 WIN_POINTS = 11          # Points required to win a game
