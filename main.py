@@ -9,11 +9,12 @@ import time
 # Game Settings
 WIN_POINTS = 11          # Points required to win a game
 WIN_DIFFERENCE = 2       # Minimum point difference to win
-SWAP_SERVE_AFTER = 5    # Points after which serve swaps every point
+SWAP_SERVE_EVERY = 2
+SWAP_SERVE_AFTER = SWAP_SERVE_EVERY - 1  # After how many points to swap serve
 
 # Button Interaction Settings
-CLICK_THRESHOLD = 0.5          # Seconds for double-click detection
-RESET_HOLD_THRESHOLD = 5       # Seconds to hold button to reset
+CLICK_THRESHOLD = 0.3          # Seconds for double-click detection
+RESET_HOLD_THRESHOLD = 3       # Seconds to hold button to reset
 
 # Color Schemes
 BG_COLOR = "#2C3E50"               # Background color of the main window
@@ -225,9 +226,11 @@ class PingPongScoreboard:
         self.master.after(2000, self.reset_scores)  # Delay reset for 2 seconds
 
     def reset_scores(self):
-        # Reset scores for a new game
+        # Reset scores and games won for a new game
         self.player1_score = 0
         self.player2_score = 0
+        self.player1_games_won = 0
+        self.player2_games_won = 0
         self.win_message_label.config(text="")  # Clear win message
         self.update_display()
 
@@ -265,7 +268,7 @@ class PingPongScoreboard:
                     # Check if the button has been held long enough to reset
                     elapsed_time = time.time() - self.button_press_start_time[player]
                     if elapsed_time >= RESET_HOLD_THRESHOLD:
-                        self.reset_scores()  # Reset the scores
+                        self.reset_scores()  # Reset the scores and games won
                         self.button_pressed[player] = False  # Prevent repeated resets
                         self.reset_occurred[player] = True  # Set reset flag
                         # When a reset occurs, do not handle click actions
