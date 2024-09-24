@@ -204,9 +204,12 @@ class PingPongScoreboard:
         # Increment the serve counter
         self.serve_counter += 1
 
-        # Check if it's time to swap the serve
-        if self.player1_score >= 10 and self.player2_score >= 10:
-            # Both players have at least 10 points: swap serve every point
+        # Determine if both players have reached at least 10 points
+        both_reached_10 = self.player1_score >= 10 and self.player2_score >= 10
+
+        # Determine serve swapping condition
+        if both_reached_10:
+            # Both players have at least 10 points: swap serve every single point
             if self.serve_counter >= 1:
                 self.toggle_serving()
                 self.serve_counter = 0  # Reset the counter after swapping
@@ -216,6 +219,7 @@ class PingPongScoreboard:
                 self.toggle_serving()
                 self.serve_counter = 0  # Reset the counter after swapping
 
+        # Add the point to the respective player
         if player == 1:
             self.player1_score += 1
         else:
@@ -236,10 +240,17 @@ class PingPongScoreboard:
     def show_win_message(self, message):
         # Display the win message
         self.win_message_label.config(text=message)
-        self.master.after(2000, self.reset_scores)  # Delay reset for 2 seconds
+        self.master.after(2000, self.reset_points)  # Delay reset for 2 seconds
 
-    def reset_scores(self):
-        # Reset scores and games won for a new game
+    def reset_points(self):
+        # Reset only the current game points for a new game
+        self.player1_score = 0
+        self.player2_score = 0
+        self.win_message_label.config(text="")  # Clear win message
+        self.update_display()
+
+    def reset_all(self):
+        # Reset both current game points and games won for a complete reset
         self.player1_score = 0
         self.player2_score = 0
         self.player1_games_won = 0
@@ -269,6 +280,18 @@ class PingPongScoreboard:
         """Toggle the serving player between Player 1 and Player 2."""
         self.serving = 2 if self.serving == 1 else 1
         self.update_display()
+        self.flash_serve_toggle()  # Optional: Provide visual feedback
+
+    def flash_serve_toggle(self):
+        """Flash the background to indicate serve has toggled."""
+        original_bg = self.master.cget("bg")
+        flash_color = "#16A085"  # A distinct color for flashing
+
+        def reset_bg():
+            self.master.configure(bg=original_bg)
+
+        self.master.configure(bg=flash_color)
+        self.master.after(200, reset_bg)  # Flash duration: 200 milliseconds
 
     def check_buttons(self):
         # GPIO logic to check button states
@@ -284,7 +307,7 @@ class PingPongScoreboard:
                     self.button_press_start_time[player] = None  # Reset start time
 
                     if press_duration >= RESET_HOLD_THRESHOLD:
-                        self.reset_scores()  # Reset the scores and games won
+                        self.reset_all()  # Reset the scores and games won
                         self.reset_occurred[player] = True  # Set reset flag
                         # When a reset occurs, do not handle click actions
                         self.cancel_single_click(player)  # Cancel any pending single click
