@@ -9,8 +9,7 @@ import time
 # Game Settings
 WIN_POINTS = 11          # Points required to win a game
 WIN_DIFFERENCE = 2       # Minimum point difference to win
-SWAP_SERVE_EVERY = 2
-SWAP_SERVE_AFTER = SWAP_SERVE_EVERY - 1  # After how many points to swap serve
+SWAP_SERVE_EVERY = 2     # Swap serve after every two points
 
 # Button Interaction Settings
 CLICK_THRESHOLD = 0.3          # Seconds for double-click detection
@@ -72,6 +71,9 @@ class PingPongScoreboard:
         self.serving = 1  # Player 1 starts serving
         self.player1_games_won = 0
         self.player2_games_won = 0
+
+        # Initialize serve counter
+        self.serve_counter = 0
 
         # Initialize button states and press timing
         self.button_pressed = {1: False, 2: False}
@@ -199,9 +201,13 @@ class PingPongScoreboard:
             self.player2_score_label.config(foreground=SERVING_COLOR)  # Serving player color
 
     def add_point(self, player):
-        if self.player1_score >= SWAP_SERVE_AFTER or self.player2_score >= SWAP_SERVE_AFTER:
-            # Swap serve every point if score is SWAP_SERVE_AFTER or more
-            self.serving = 2 if self.serving == 1 else 1
+        # Increment the serve counter
+        self.serve_counter += 1
+
+        # Check if it's time to swap the serve
+        if self.serve_counter >= SWAP_SERVE_EVERY:
+            self.toggle_serving()
+            self.serve_counter = 0  # Reset the counter after swapping
 
         if player == 1:
             self.player1_score += 1
@@ -264,31 +270,30 @@ class PingPongScoreboard:
                 if not self.button_pressed[player]:  # If not already pressed
                     self.button_pressed[player] = True
                     self.button_press_start_time[player] = time.time()  # Record start time
-                else:  # If button is already pressed
-                    # Check if the button has been held long enough to reset
-                    elapsed_time = time.time() - self.button_press_start_time[player]
-                    if elapsed_time >= RESET_HOLD_THRESHOLD:
+            else:  # Button released
+                if self.button_pressed[player]:  # If it was pressed
+                    self.button_pressed[player] = False
+                    press_duration = time.time() - self.button_press_start_time[player]
+                    self.button_press_start_time[player] = None  # Reset start time
+
+                    if press_duration >= RESET_HOLD_THRESHOLD:
                         self.reset_scores()  # Reset the scores and games won
-                        self.button_pressed[player] = False  # Prevent repeated resets
                         self.reset_occurred[player] = True  # Set reset flag
                         # When a reset occurs, do not handle click actions
                         self.cancel_single_click(player)  # Cancel any pending single click
                         continue  # Skip point addition
-            else:  # Button released
-                if self.button_pressed[player]:  # If it was pressed
-                    self.button_pressed[player] = False
-                    self.button_press_start_time[player] = None  # Reset start time
-                    if not self.reset_occurred[player]:
-                        if self.click_timer[player] is not None:
-                            # Second click detected within threshold, double-click
-                            self.cancel_single_click(player)
-                            self.toggle_serving()  # Toggle serving regardless of which button was double-clicked
-                        else:
-                            # Start a single-click timer
-                            self.schedule_single_click(player)
                     else:
-                        # Reset occurred, do not add a point
-                        self.reset_occurred[player] = False  # Reset the flag
+                        if not self.reset_occurred[player]:
+                            if self.click_timer[player] is not None:
+                                # Second click detected within threshold, double-click
+                                self.cancel_single_click(player)
+                                self.toggle_serving()  # Toggle serving regardless of which button was double-clicked
+                            else:
+                                # Start a single-click timer
+                                self.schedule_single_click(player)
+                        else:
+                            # Reset occurred, do not add a point
+                            self.reset_occurred[player] = False  # Reset the flag
                 else:
                     continue  # If it wasn't pressed, do nothing
 
