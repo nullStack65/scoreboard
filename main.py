@@ -9,7 +9,7 @@ import time
 # Game Settings
 WIN_POINTS = 11          # Points required to win a game
 WIN_DIFFERENCE = 2       # Minimum point difference to win
-SWAP_SERVE_AFTER = 10    # Points after which serve swaps every point
+SWAP_SERVE_AFTER = 5    # Points after which serve swaps every point
 
 # Button Interaction Settings
 CLICK_THRESHOLD = 0.5          # Seconds for double-click detection
