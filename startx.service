@@ -1,0 +1,17 @@
+[Unit]
+Description=Start X Server
+DefaultDependencies=false
+After=local-fs.target
+Before=basic.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/startx
+Environment=DISPLAY=:0
+Restart=on-failure
+RestartSec=2
+StartLimitInterval=60
+StartLimitBurst=4
+
+[Install]
+WantedBy=basic.target
